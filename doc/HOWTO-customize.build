@@ -86,4 +86,12 @@ Please refer to the file lib/LowLevel.build for the list of supported implementa
     <!-- Type "make libK12-AVX512.dylib" to build a dynamic library for macOS with KangarooTwelve with AVX512 code. -->
     <target name="libK12-AVX512.dylib" inherits="KangarooTwelve K1600-AVX512 K1600x2-AVX512-u12 K1600x4-AVX512-u12 K1600x8-AVX512-u12"/>
 
+    <!-- Example using fallback -->
+    <fragment name="K1600x4-on1" inherits="K1600x4">
+        <c>lib/low/KeccakP-1600-times4/fallback-on1/KeccakP-1600-times4-on1.c</c>
+        <h>lib/low/KeccakP-1600-times4/fallback-on1/KeccakP-1600-times4-SnP.h</h>
+        <inc>lib/low/common/PlSnP-Fallback.inc</inc>
+    </fragment>
+    <target name="UT-fallback" inherits="K1600-plain-64bits-ua K1600x4-on1 KangarooTwelve UT"/>
+
 </group>
