@@ -21,12 +21,13 @@ Please refer to PlSnP-documentation.h for more details.
 */
 
 /* expect PlSnP_baseParallelism, PlSnP_targetParallelism */
-/* expect SnP_stateSizeInBytes, SnP_stateAlignment */
 /* expect prefix */
 /* expect SnP_* */
 
 #define JOIN0(a, b)                     a ## b
 #define JOIN(a, b)                      JOIN0(a, b)
+
+#define PlSnP_states                    JOIN(prefix, _states)
 
 #define PlSnP_StaticInitialize          JOIN(prefix, _StaticInitialize)
 #define PlSnP_InitializeAll             JOIN(prefix, _InitializeAll)
@@ -42,16 +43,13 @@ Please refer to PlSnP-documentation.h for more details.
 #define PlSnP_ExtractAndAddLanesAll     JOIN(prefix, _ExtractAndAddLanesAll)
 
 #if (PlSnP_baseParallelism == 1)
-    #define SnP_stateSizeInBytes            JOIN(SnP, _stateSizeInBytes)
-    #define SnP_stateAlignment              JOIN(SnP, _stateAlignment)
+    #define SnP_state                   JOIN(SnP, _state)
 #else
-    #define SnP_stateSizeInBytes            JOIN(SnP, _statesSizeInBytes)
-    #define SnP_stateAlignment              JOIN(SnP, _statesAlignment)
+    #define SnP_state                   JOIN(SnP, _states)
 #endif
 #define PlSnP_factor ((PlSnP_targetParallelism)/(PlSnP_baseParallelism))
-#define SnP_stateOffset (((SnP_stateSizeInBytes+(SnP_stateAlignment-1))/SnP_stateAlignment)*SnP_stateAlignment)
-#define stateWithIndex(i) ((unsigned char *)states+((i)*SnP_stateOffset))
-#define stateWithIndexConst(i) ((const unsigned char *)states+((i)*SnP_stateOffset))
+#define stateWithIndex(i)               &(states->states[i])
+#define stateWithIndexConst(i)          &(states->states[i])
 
 #define SnP_StaticInitialize            JOIN(SnP, _StaticInitialize)
 #define SnP_Initialize                  JOIN(SnP, _Initialize)
@@ -67,12 +65,12 @@ Please refer to PlSnP-documentation.h for more details.
 #define SnP_ExtractAndAddBytes          JOIN(SnP, _ExtractAndAddBytes)
 #define SnP_ExtractAndAddLanesAll       JOIN(SnP, _ExtractAndAddLanesAll)
 
-void PlSnP_StaticInitialize( void )
+void PlSnP_StaticInitialize(void)
 {
     SnP_StaticInitialize();
 }
 
-void PlSnP_InitializeAll(void *states)
+void PlSnP_InitializeAll(PlSnP_states *states)
 {
     unsigned int i;
 
@@ -84,7 +82,7 @@ void PlSnP_InitializeAll(void *states)
     #endif
 }
 
-void PlSnP_AddByte(void *states, unsigned int instanceIndex, unsigned char byte, unsigned int offset)
+void PlSnP_AddByte(PlSnP_states *states, unsigned int instanceIndex, unsigned char byte, unsigned int offset)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_AddByte(stateWithIndex(instanceIndex), byte, offset);
@@ -93,7 +91,7 @@ void PlSnP_AddByte(void *states, unsigned int instanceIndex, unsigned char byte,
     #endif
 }
 
-void PlSnP_AddBytes(void *states, unsigned int instanceIndex, const unsigned char *data, unsigned int offset, unsigned int length)
+void PlSnP_AddBytes(PlSnP_states *states, unsigned int instanceIndex, const unsigned char *data, unsigned int offset, unsigned int length)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_AddBytes(stateWithIndex(instanceIndex), data, offset, length);
@@ -102,7 +100,7 @@ void PlSnP_AddBytes(void *states, unsigned int instanceIndex, const unsigned cha
     #endif
 }
 
-void PlSnP_AddLanesAll(void *states, const unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
+void PlSnP_AddLanesAll(PlSnP_states *states, const unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
 {
     unsigned int i;
 
@@ -116,7 +114,7 @@ void PlSnP_AddLanesAll(void *states, const unsigned char *data, unsigned int lan
     }
 }
 
-void PlSnP_OverwriteBytes(void *states, unsigned int instanceIndex, const unsigned char *data, unsigned int offset, unsigned int length)
+void PlSnP_OverwriteBytes(PlSnP_states *states, unsigned int instanceIndex, const unsigned char *data, unsigned int offset, unsigned int length)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_OverwriteBytes(stateWithIndex(instanceIndex), data, offset, length);
@@ -125,7 +123,7 @@ void PlSnP_OverwriteBytes(void *states, unsigned int instanceIndex, const unsign
     #endif
 }
 
-void PlSnP_OverwriteLanesAll(void *states, const unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
+void PlSnP_OverwriteLanesAll(PlSnP_states *states, const unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
 {
     unsigned int i;
 
@@ -139,7 +137,7 @@ void PlSnP_OverwriteLanesAll(void *states, const unsigned char *data, unsigned i
     }
 }
 
-void PlSnP_OverwriteWithZeroes(void *states, unsigned int instanceIndex, unsigned int byteCount)
+void PlSnP_OverwriteWithZeroes(PlSnP_states *states, unsigned int instanceIndex, unsigned int byteCount)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_OverwriteWithZeroes(stateWithIndex(instanceIndex), byteCount);
@@ -148,7 +146,7 @@ void PlSnP_OverwriteWithZeroes(void *states, unsigned int instanceIndex, unsigne
     #endif
 }
 
-void PlSnP_PermuteAll(void *states)
+void PlSnP_PermuteAll(PlSnP_states *states)
 {
     unsigned int i;
 
@@ -162,7 +160,7 @@ void PlSnP_PermuteAll(void *states)
 }
 
 #if (defined(SnP_Permute_12rounds) || defined(SnP_PermuteAll_12rounds))
-void PlSnP_PermuteAll_12rounds(void *states)
+void PlSnP_PermuteAll_12rounds(PlSnP_states *states)
 {
     unsigned int i;
 
@@ -177,7 +175,7 @@ void PlSnP_PermuteAll_12rounds(void *states)
 #endif
 
 #if (defined(SnP_Permute_Nrounds) || defined(SnP_PermuteAll_6rounds))
-void PlSnP_PermuteAll_6rounds(void *states)
+void PlSnP_PermuteAll_6rounds(PlSnP_states *states)
 {
     unsigned int i;
 
@@ -192,7 +190,7 @@ void PlSnP_PermuteAll_6rounds(void *states)
 #endif
 
 #if (defined(SnP_Permute_Nrounds) || defined(SnP_PermuteAll_4rounds))
-void PlSnP_PermuteAll_4rounds(void *states)
+void PlSnP_PermuteAll_4rounds(PlSnP_states *states)
 {
     unsigned int i;
 
@@ -206,7 +204,7 @@ void PlSnP_PermuteAll_4rounds(void *states)
 }
 #endif
 
-void PlSnP_ExtractBytes(void *states, unsigned int instanceIndex, unsigned char *data, unsigned int offset, unsigned int length)
+void PlSnP_ExtractBytes(const PlSnP_states *states, unsigned int instanceIndex, unsigned char *data, unsigned int offset, unsigned int length)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_ExtractBytes(stateWithIndex(instanceIndex), data, offset, length);
@@ -215,7 +213,7 @@ void PlSnP_ExtractBytes(void *states, unsigned int instanceIndex, unsigned char 
     #endif
 }
 
-void PlSnP_ExtractLanesAll(const void *states, unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
+void PlSnP_ExtractLanesAll(const PlSnP_states *states, unsigned char *data, unsigned int laneCount, unsigned int laneOffset)
 {
     unsigned int i;
 
@@ -229,7 +227,7 @@ void PlSnP_ExtractLanesAll(const void *states, unsigned char *data, unsigned int
     }
 }
 
-void PlSnP_ExtractAndAddBytes(void *states, unsigned int instanceIndex, const unsigned char *input, unsigned char *output, unsigned int offset, unsigned int length)
+void PlSnP_ExtractAndAddBytes(const PlSnP_states *states, unsigned int instanceIndex, const unsigned char *input, unsigned char *output, unsigned int offset, unsigned int length)
 {
     #if (PlSnP_baseParallelism == 1)
         SnP_ExtractAndAddBytes(stateWithIndex(instanceIndex), input, output, offset, length);
@@ -238,7 +236,7 @@ void PlSnP_ExtractAndAddBytes(void *states, unsigned int instanceIndex, const un
     #endif
 }
 
-void PlSnP_ExtractAndAddLanesAll(const void *states, const unsigned char *input, unsigned char *output, unsigned int laneCount, unsigned int laneOffset)
+void PlSnP_ExtractAndAddLanesAll(const PlSnP_states *states, const unsigned char *input, unsigned char *output, unsigned int laneCount, unsigned int laneOffset)
 {
     unsigned int i;
 
@@ -253,9 +251,11 @@ void PlSnP_ExtractAndAddLanesAll(const void *states, const unsigned char *input,
     }
 }
 
+#undef SnP_state
+#undef PlSnP_states
 #undef PlSnP_factor
-#undef SnP_stateOffset
 #undef stateWithIndex
+#undef stateWithIndexConst
 #undef JOIN0
 #undef JOIN
 #undef PlSnP_StaticInitialize
@@ -271,11 +271,7 @@ void PlSnP_ExtractAndAddLanesAll(const void *states, const unsigned char *input,
 #undef PlSnP_ExtractLanesAll
 #undef PlSnP_ExtractAndAddBytes
 #undef PlSnP_ExtractAndAddLanesAll
-#undef SnP_stateAlignment
-#undef SnP_stateSizeInBytes
 #undef PlSnP_factor
-#undef SnP_stateOffset
-#undef stateWithIndex
 #undef SnP_StaticInitialize
 #undef SnP_Initialize
 #undef SnP_InitializeAll
