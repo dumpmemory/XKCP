@@ -72,6 +72,30 @@ void XKCP_SetProcessorCapabilities(void)
     XKCP_enableSHA3 = aarch64_has_sha3() && !XKCP_SHA3_requested_disabled;
 }
 
+/* Run the detection once, on first use. Re-running it later is harmless:
+   XKCP_SetProcessorCapabilities() is idempotent and honors the
+   XKCP_*_requested_disabled flags set by the XKCP_Disable*() functions. */
+static void XKCP_EnsureProcessorCapabilities(void)
+{
+    static int done = 0;
+    if (!done) {
+        XKCP_SetProcessorCapabilities();
+        done = 1;
+    }
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+/* Run the detection before main() (or when a shared library is loaded), while
+   the process is still single-threaded, so that multithreaded applications do
+   not race on the first-use detection above. The lazy calls in the dispatchers
+   remain as a fallback for toolchains without constructor support. */
+__attribute__((constructor))
+static void XKCP_InitializeProcessorCapabilities(void)
+{
+    XKCP_EnsureProcessorCapabilities();
+}
+#endif
+
 void XKCP_EnableAllCpuFeatures(void)
 {
     XKCP_SHA3_requested_disabled = 0;
@@ -103,6 +127,7 @@ int XKCP_ProcessCpuFeatureCommandLineOption(const char *arg)
 
 const char * KeccakP1600_GetImplementation(void)
 {
+    XKCP_EnsureProcessorCapabilities();
     if (XKCP_enableSHA3)
         return KeccakP1600_v84a_GetImplementation();
     else
@@ -111,17 +136,13 @@ const char * KeccakP1600_GetImplementation(void)
 
 int KeccakP1600_GetFeatures(void)
 {
+    XKCP_EnsureProcessorCapabilities();
     return KeccakP1600_plain64_GetFeatures();
 }
 
 void KeccakP1600_StaticInitialize(void)
 {
-    /* Detect once if the application did not already call EnableAllCpuFeatures. */
-    static int done = 0;
-    if (!done) {
-        XKCP_SetProcessorCapabilities();
-        done = 1;
-    }
+    XKCP_EnsureProcessorCapabilities();
 }
 
 /* Byte/lane management and 12-round permute are identical (generic 64-bit). */
