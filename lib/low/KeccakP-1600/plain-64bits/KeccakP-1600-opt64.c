@@ -566,45 +566,96 @@ size_t KeccakP1600_12rounds_plain64_FastLoop_Absorb(KeccakP1600_plain64_state *s
 
 /* ---------------------------------------------------------------- */
 
+/*
+With lane complementing, the state (both as stored and in the Aba...Asu
+variables) keeps lanes be, bi, go, ki, mi and sa complemented. Loading or
+keeping lanes (mStateIn/mStateOut/mStateOutAll) and XORing into lanes (the
+trailer) are representation-agnostic, but data overwriting a lane
+(mStateOver/mStateNoInput) must enter complemented, and extracted data
+(mStateExtr) must be complemented back.
+*/
+
 // r = 160
 #define mStateIn160( __s )          Asa = __s[20]; Ase = __s[21]; Asi = __s[22]; Aso = __s[23]; Asu = __s[24]
 
 #define mStateOut160( __s )         __s[20] = Asa; __s[21] = Ase; __s[22] = Asi; __s[23] = Aso; __s[24] = Asu
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateOver160( __i )        Aba = __i[ 0]; Abe = ~__i[ 1]; Abi = ~__i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
+                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = ~__i[ 8]; Agu = __i[ 9]; \
+                                    Aka = __i[10]; Ake = __i[11]; Aki = ~__i[12]; Ako = __i[13]; Aku = __i[14]; \
+                                    Ama = __i[15]; Ame = __i[16]; Ami = ~__i[17]; Amo = __i[18]; Amu = __i[19]
+#else
 #define mStateOver160( __i )        Aba = __i[ 0]; Abe = __i[ 1]; Abi = __i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
                                     Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = __i[ 8]; Agu = __i[ 9]; \
                                     Aka = __i[10]; Ake = __i[11]; Aki = __i[12]; Ako = __i[13]; Aku = __i[14]; \
                                     Ama = __i[15]; Ame = __i[16]; Ami = __i[17]; Amo = __i[18]; Amu = __i[19]
+#endif
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateNoInput160()          Aba = 1; Abe = ~(uint64_t)0; Abi = ~(uint64_t)0; Abo = 0; Abu = 0; \
+                                    Aga = 0; Age = 0; Agi = 0; Ago = ~(uint64_t)0; Agu = 0; \
+                                    Aka = 0; Ake = 0; Aki = ~(uint64_t)0; Ako = 0; Aku = 0; \
+                                    Ama = 0; Ame = 0; Ami = ~(uint64_t)0; Amo = 0; Amu = 0
+#else
 #define mStateNoInput160()          Aba = 1; Abe = 0; Abi = 0; Abo = 0; Abu = 0; \
                                     Aga = 0; Age = 0; Agi = 0; Ago = 0; Agu = 0; \
                                     Aka = 0; Ake = 0; Aki = 0; Ako = 0; Aku = 0; \
                                     Ama = 0; Ame = 0; Ami = 0; Amo = 0; Amu = 0
+#endif
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateExtr160( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = ~Abe ^ __oA[ 1]; __o[ 2] = ~Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
+                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = ~Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
+                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = ~Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
+                                    __o[15] = Ama ^ __oA[15]; __o[16] = Ame ^ __oA[16]; __o[17] = ~Ami ^ __oA[17]; __o[18] = Amo ^ __oA[18]; __o[19] = Amu ^ __oA[19]
+#else
 #define mStateExtr160( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = Abe ^ __oA[ 1]; __o[ 2] = Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
                                     __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
                                     __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
                                     __o[15] = Ama ^ __oA[15]; __o[16] = Ame ^ __oA[16]; __o[17] = Ami ^ __oA[17]; __o[18] = Amo ^ __oA[18]; __o[19] = Amu ^ __oA[19]
+#endif
 
 // r = 128
 #define mStateIn128( __s )          mStateIn160( __s ); Ame = __s[16]; Ami = __s[17]; Amo = __s[18]; Amu = __s[19]
 
 #define mStateOut128( __s )         mStateOut160( __s ); __s[16] = Ame; __s[17] = Ami; __s[18] = Amo; __s[19] = Amu
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateOver128( __i )        Aba = __i[ 0]; Abe = ~__i[ 1]; Abi = ~__i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
+                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = ~__i[ 8]; Agu = __i[ 9]; \
+                                    Aka = __i[10]; Ake = __i[11]; Aki = ~__i[12]; Ako = __i[13]; Aku = __i[14]; \
+                                    Ama = __i[15]
+#else
 #define mStateOver128( __i )        Aba = __i[ 0]; Abe = __i[ 1]; Abi = __i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
                                     Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = __i[ 8]; Agu = __i[ 9]; \
                                     Aka = __i[10]; Ake = __i[11]; Aki = __i[12]; Ako = __i[13]; Aku = __i[14]; \
                                     Ama = __i[15]
+#endif
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateNoInput128()          Aba = 1; Abe = ~(uint64_t)0; Abi = ~(uint64_t)0; Abo = 0; Abu = 0; \
+                                    Aga = 0; Age = 0; Agi = 0; Ago = ~(uint64_t)0; Agu = 0; \
+                                    Aka = 0; Ake = 0; Aki = ~(uint64_t)0; Ako = 0; Aku = 0; \
+                                    Ama = 0
+#else
 #define mStateNoInput128()          Aba = 1; Abe = 0; Abi = 0; Abo = 0; Abu = 0; \
                                     Aga = 0; Age = 0; Agi = 0; Ago = 0; Agu = 0; \
                                     Aka = 0; Ake = 0; Aki = 0; Ako = 0; Aku = 0; \
                                     Ama = 0
+#endif
 
+#ifdef KeccakP1600_plain64_useLaneComplementing
+#define mStateExtr128( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = ~Abe ^ __oA[ 1]; __o[ 2] = ~Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
+                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = ~Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
+                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = ~Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
+                                    __o[15] = Ama ^ __oA[15]
+#else
 #define mStateExtr128( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = Abe ^ __oA[ 1]; __o[ 2] = Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
                                     __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
                                     __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
                                     __o[15] = Ama ^ __oA[15]
+#endif
 
 // Whole state
 #define mStateOutAll( __s )         __s[ 0] = Aba; __s[ 1] = Abe; __s[ 2] = Abi; __s[ 3] = Abo; __s[ 4] = Abu; \
