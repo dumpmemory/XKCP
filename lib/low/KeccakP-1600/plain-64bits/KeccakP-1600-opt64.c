@@ -26,6 +26,7 @@ Please refer to LowLevel.build for the exact list of other files it must be comb
 #include <string.h>
 #include <stdlib.h>
 #include "brg_endian.h"
+#include "load-store.h"
 #include "KeccakP-1600-SnP.h"
 
 #if defined(KeccakP1600_plain64_useLaneComplementing)
@@ -125,40 +126,29 @@ void KeccakP1600_plain64_AddLanes(KeccakP1600_plain64_state *state, const unsign
 {
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     unsigned int i = 0;
-#ifdef NO_MISALIGNED_ACCESSES
-    /* If either pointer is misaligned, fall back to byte-wise xor. */
-    if (((((uintptr_t)state) & 7) != 0) || ((((uintptr_t)data) & 7) != 0)) {
-      for (i = 0; i < laneCount * 8; i++) {
-        ((unsigned char*)state)[i] ^= data[i];
-      }
+
+    for( ; (i+8)<=laneCount; i+=8) {
+        state->A[i+0] ^= XKCP_load64(data+(i+0)*8);
+        state->A[i+1] ^= XKCP_load64(data+(i+1)*8);
+        state->A[i+2] ^= XKCP_load64(data+(i+2)*8);
+        state->A[i+3] ^= XKCP_load64(data+(i+3)*8);
+        state->A[i+4] ^= XKCP_load64(data+(i+4)*8);
+        state->A[i+5] ^= XKCP_load64(data+(i+5)*8);
+        state->A[i+6] ^= XKCP_load64(data+(i+6)*8);
+        state->A[i+7] ^= XKCP_load64(data+(i+7)*8);
     }
-    else
-#endif
-    {
-      /* Otherwise... */
-      for( ; (i+8)<=laneCount; i+=8) {
-          state->A[i+0] ^= ((uint64_t*)data)[i+0];
-          state->A[i+1] ^= ((uint64_t*)data)[i+1];
-          state->A[i+2] ^= ((uint64_t*)data)[i+2];
-          state->A[i+3] ^= ((uint64_t*)data)[i+3];
-          state->A[i+4] ^= ((uint64_t*)data)[i+4];
-          state->A[i+5] ^= ((uint64_t*)data)[i+5];
-          state->A[i+6] ^= ((uint64_t*)data)[i+6];
-          state->A[i+7] ^= ((uint64_t*)data)[i+7];
-      }
-      for( ; (i+4)<=laneCount; i+=4) {
-          state->A[i+0] ^= ((uint64_t*)data)[i+0];
-          state->A[i+1] ^= ((uint64_t*)data)[i+1];
-          state->A[i+2] ^= ((uint64_t*)data)[i+2];
-          state->A[i+3] ^= ((uint64_t*)data)[i+3];
-      }
-      for( ; (i+2)<=laneCount; i+=2) {
-          state->A[i+0] ^= ((uint64_t*)data)[i+0];
-          state->A[i+1] ^= ((uint64_t*)data)[i+1];
-      }
-      if (i<laneCount) {
-          state->A[i+0] ^= ((uint64_t*)data)[i+0];
-      }
+    for( ; (i+4)<=laneCount; i+=4) {
+        state->A[i+0] ^= XKCP_load64(data+(i+0)*8);
+        state->A[i+1] ^= XKCP_load64(data+(i+1)*8);
+        state->A[i+2] ^= XKCP_load64(data+(i+2)*8);
+        state->A[i+3] ^= XKCP_load64(data+(i+3)*8);
+    }
+    for( ; (i+2)<=laneCount; i+=2) {
+        state->A[i+0] ^= XKCP_load64(data+(i+0)*8);
+        state->A[i+1] ^= XKCP_load64(data+(i+1)*8);
+    }
+    if (i<laneCount) {
+        state->A[i+0] ^= XKCP_load64(data+(i+0)*8);
     }
 #else
     unsigned int i;
@@ -237,9 +227,9 @@ void KeccakP1600_plain64_OverwriteLanes(KeccakP1600_plain64_state *state, const 
 
     for(lanePosition=0; lanePosition<laneCount; lanePosition++)
         if ((lanePosition == 1) || (lanePosition == 2) || (lanePosition == 8) || (lanePosition == 12) || (lanePosition == 17) || (lanePosition == 20))
-            state->A[lanePosition] = ~((const uint64_t*)data)[lanePosition];
+            state->A[lanePosition] = ~XKCP_load64(data+lanePosition*8);
         else
-            state->A[lanePosition] = ((const uint64_t*)data)[lanePosition];
+            state->A[lanePosition] = XKCP_load64(data+lanePosition*8);
 #else
     memcpy(state, data, laneCount*8);
 #endif
@@ -412,21 +402,21 @@ void KeccakP1600_plain64_ExtractLanes(const KeccakP1600_plain64_state *state, un
     unsigned int i;
 
     for(i=0; i<laneCount; i++)
-        fromWordToBytes(data+(i*8), ((const uint64_t*)state)[i]);
+        fromWordToBytes(data+(i*8), state->A[i]);
 #endif
 #ifdef KeccakP1600_plain64_useLaneComplementing
     if (laneCount > 1) {
-        ((uint64_t*)data)[ 1] = ~((uint64_t*)data)[ 1];
+        XKCP_store64(data+1*8, ~XKCP_load64(data+1*8));
         if (laneCount > 2) {
-            ((uint64_t*)data)[ 2] = ~((uint64_t*)data)[ 2];
+            XKCP_store64(data+2*8, ~XKCP_load64(data+2*8));
             if (laneCount > 8) {
-                ((uint64_t*)data)[ 8] = ~((uint64_t*)data)[ 8];
+                XKCP_store64(data+8*8, ~XKCP_load64(data+8*8));
                 if (laneCount > 12) {
-                    ((uint64_t*)data)[12] = ~((uint64_t*)data)[12];
+                    XKCP_store64(data+12*8, ~XKCP_load64(data+12*8));
                     if (laneCount > 17) {
-                        ((uint64_t*)data)[17] = ~((uint64_t*)data)[17];
+                        XKCP_store64(data+17*8, ~XKCP_load64(data+17*8));
                         if (laneCount > 20) {
-                            ((uint64_t*)data)[20] = ~((uint64_t*)data)[20];
+                            XKCP_store64(data+20*8, ~XKCP_load64(data+20*8));
                         }
                     }
                 }
@@ -452,22 +442,12 @@ void KeccakP1600_plain64_ExtractAndAddBytesInLane(const KeccakP1600_plain64_stat
     if ((lanePosition == 1) || (lanePosition == 2) || (lanePosition == 8) || (lanePosition == 12) || (lanePosition == 17) || (lanePosition == 20))
         lane = ~lane;
 #endif
-#if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    {
-        unsigned int i;
-        uint64_t lane1[1];
-        lane1[0] = lane;
-        for(i=0; i<length; i++)
-            output[i] = input[i] ^ ((uint8_t*)lane1)[offset+i];
-    }
-#else
     unsigned int i;
     lane >>= offset*8;
     for(i=0; i<length; i++) {
         output[i] = input[i] ^ (lane & 0xFF);
         lane >>= 8;
     }
-#endif
 }
 
 /* ---------------------------------------------------------------- */
@@ -482,26 +462,26 @@ void KeccakP1600_plain64_ExtractAndAddLanes(const KeccakP1600_plain64_state *sta
 
     for(i=0; i<laneCount; i++) {
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-        ((uint64_t*)output)[i] = ((uint64_t*)input)[i] ^ ((const uint64_t*)state)[i];
+        XKCP_store64(output+i*8, XKCP_load64(input+i*8) ^ state->A[i]);
 #else
-        fromWordToBytes(temp, ((const uint64_t*)state)[i]);
+        fromWordToBytes(temp, state->A[i]);
         for(j=0; j<8; j++)
             output[i*8+j] = input[i*8+j] ^ temp[j];
 #endif
     }
 #ifdef KeccakP1600_plain64_useLaneComplementing
     if (laneCount > 1) {
-        ((uint64_t*)output)[ 1] = ~((uint64_t*)output)[ 1];
+        XKCP_store64(output+1*8, ~XKCP_load64(output+1*8));
         if (laneCount > 2) {
-            ((uint64_t*)output)[ 2] = ~((uint64_t*)output)[ 2];
+            XKCP_store64(output+2*8, ~XKCP_load64(output+2*8));
             if (laneCount > 8) {
-                ((uint64_t*)output)[ 8] = ~((uint64_t*)output)[ 8];
+                XKCP_store64(output+8*8, ~XKCP_load64(output+8*8));
                 if (laneCount > 12) {
-                    ((uint64_t*)output)[12] = ~((uint64_t*)output)[12];
+                    XKCP_store64(output+12*8, ~XKCP_load64(output+12*8));
                     if (laneCount > 17) {
-                        ((uint64_t*)output)[17] = ~((uint64_t*)output)[17];
+                        XKCP_store64(output+17*8, ~XKCP_load64(output+17*8));
                         if (laneCount > 20) {
-                            ((uint64_t*)output)[20] = ~((uint64_t*)output)[20];
+                            XKCP_store64(output+20*8, ~XKCP_load64(output+20*8));
                         }
                     }
                 }
@@ -528,13 +508,13 @@ size_t KeccakF1600_plain64_FastLoop_Absorb(KeccakP1600_plain64_state *state, uns
     unsigned int i;
     #endif
     uint64_t *stateAsLanes = state->A;
-    uint64_t *inDataAsLanes = (uint64_t*)data;
+    const unsigned char *inData = data;
 
     copyFromState(A, stateAsLanes)
     while(dataByteLen >= laneCount*8) {
-        addInput(A, inDataAsLanes, laneCount)
+        addInput(A, inData, laneCount)
         rounds24
-        inDataAsLanes += laneCount;
+        inData += laneCount*8;
         dataByteLen -= laneCount*8;
     }
     copyToState(stateAsLanes, A)
@@ -551,13 +531,13 @@ size_t KeccakP1600_12rounds_plain64_FastLoop_Absorb(KeccakP1600_plain64_state *s
     unsigned int i;
     #endif
     uint64_t *stateAsLanes = state->A;
-    uint64_t *inDataAsLanes = (uint64_t*)data;
+    const unsigned char *inData = data;
 
     copyFromState(A, stateAsLanes)
     while(dataByteLen >= laneCount*8) {
-        addInput(A, inDataAsLanes, laneCount)
+        addInput(A, inData, laneCount)
         rounds12
-        inDataAsLanes += laneCount;
+        inData += laneCount*8;
         dataByteLen -= laneCount*8;
     }
     copyToState(stateAsLanes, A)
@@ -581,15 +561,15 @@ trailer) are representation-agnostic, but data overwriting a lane
 #define mStateOut160( __s )         __s[20] = Asa; __s[21] = Ase; __s[22] = Asi; __s[23] = Aso; __s[24] = Asu
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
-#define mStateOver160( __i )        Aba = __i[ 0]; Abe = ~__i[ 1]; Abi = ~__i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
-                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = ~__i[ 8]; Agu = __i[ 9]; \
-                                    Aka = __i[10]; Ake = __i[11]; Aki = ~__i[12]; Ako = __i[13]; Aku = __i[14]; \
-                                    Ama = __i[15]; Ame = __i[16]; Ami = ~__i[17]; Amo = __i[18]; Amu = __i[19]
+#define mStateOver160( __i )        Aba = XKCP_load64(__i+0*8); Abe = ~XKCP_load64(__i+1*8); Abi = ~XKCP_load64(__i+2*8); Abo = XKCP_load64(__i+3*8); Abu = XKCP_load64(__i+4*8); \
+                                    Aga = XKCP_load64(__i+5*8); Age = XKCP_load64(__i+6*8); Agi = XKCP_load64(__i+7*8); Ago = ~XKCP_load64(__i+8*8); Agu = XKCP_load64(__i+9*8); \
+                                    Aka = XKCP_load64(__i+10*8); Ake = XKCP_load64(__i+11*8); Aki = ~XKCP_load64(__i+12*8); Ako = XKCP_load64(__i+13*8); Aku = XKCP_load64(__i+14*8); \
+                                    Ama = XKCP_load64(__i+15*8); Ame = XKCP_load64(__i+16*8); Ami = ~XKCP_load64(__i+17*8); Amo = XKCP_load64(__i+18*8); Amu = XKCP_load64(__i+19*8)
 #else
-#define mStateOver160( __i )        Aba = __i[ 0]; Abe = __i[ 1]; Abi = __i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
-                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = __i[ 8]; Agu = __i[ 9]; \
-                                    Aka = __i[10]; Ake = __i[11]; Aki = __i[12]; Ako = __i[13]; Aku = __i[14]; \
-                                    Ama = __i[15]; Ame = __i[16]; Ami = __i[17]; Amo = __i[18]; Amu = __i[19]
+#define mStateOver160( __i )        Aba = XKCP_load64(__i+0*8); Abe = XKCP_load64(__i+1*8); Abi = XKCP_load64(__i+2*8); Abo = XKCP_load64(__i+3*8); Abu = XKCP_load64(__i+4*8); \
+                                    Aga = XKCP_load64(__i+5*8); Age = XKCP_load64(__i+6*8); Agi = XKCP_load64(__i+7*8); Ago = XKCP_load64(__i+8*8); Agu = XKCP_load64(__i+9*8); \
+                                    Aka = XKCP_load64(__i+10*8); Ake = XKCP_load64(__i+11*8); Aki = XKCP_load64(__i+12*8); Ako = XKCP_load64(__i+13*8); Aku = XKCP_load64(__i+14*8); \
+                                    Ama = XKCP_load64(__i+15*8); Ame = XKCP_load64(__i+16*8); Ami = XKCP_load64(__i+17*8); Amo = XKCP_load64(__i+18*8); Amu = XKCP_load64(__i+19*8)
 #endif
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
@@ -605,15 +585,15 @@ trailer) are representation-agnostic, but data overwriting a lane
 #endif
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
-#define mStateExtr160( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = ~Abe ^ __oA[ 1]; __o[ 2] = ~Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
-                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = ~Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
-                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = ~Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
-                                    __o[15] = Ama ^ __oA[15]; __o[16] = Ame ^ __oA[16]; __o[17] = ~Ami ^ __oA[17]; __o[18] = Amo ^ __oA[18]; __o[19] = Amu ^ __oA[19]
+#define mStateExtr160( __o, __oA )  XKCP_store64(__o+0*8, Aba ^ XKCP_load64(__oA+0*8)); XKCP_store64(__o+1*8, ~Abe ^ XKCP_load64(__oA+1*8)); XKCP_store64(__o+2*8, ~Abi ^ XKCP_load64(__oA+2*8)); XKCP_store64(__o+3*8, Abo ^ XKCP_load64(__oA+3*8)); XKCP_store64(__o+4*8, Abu ^ XKCP_load64(__oA+4*8)); \
+                                    XKCP_store64(__o+5*8, Aga ^ XKCP_load64(__oA+5*8)); XKCP_store64(__o+6*8, Age ^ XKCP_load64(__oA+6*8)); XKCP_store64(__o+7*8, Agi ^ XKCP_load64(__oA+7*8)); XKCP_store64(__o+8*8, ~Ago ^ XKCP_load64(__oA+8*8)); XKCP_store64(__o+9*8, Agu ^ XKCP_load64(__oA+9*8)); \
+                                    XKCP_store64(__o+10*8, Aka ^ XKCP_load64(__oA+10*8)); XKCP_store64(__o+11*8, Ake ^ XKCP_load64(__oA+11*8)); XKCP_store64(__o+12*8, ~Aki ^ XKCP_load64(__oA+12*8)); XKCP_store64(__o+13*8, Ako ^ XKCP_load64(__oA+13*8)); XKCP_store64(__o+14*8, Aku ^ XKCP_load64(__oA+14*8)); \
+                                    XKCP_store64(__o+15*8, Ama ^ XKCP_load64(__oA+15*8)); XKCP_store64(__o+16*8, Ame ^ XKCP_load64(__oA+16*8)); XKCP_store64(__o+17*8, ~Ami ^ XKCP_load64(__oA+17*8)); XKCP_store64(__o+18*8, Amo ^ XKCP_load64(__oA+18*8)); XKCP_store64(__o+19*8, Amu ^ XKCP_load64(__oA+19*8))
 #else
-#define mStateExtr160( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = Abe ^ __oA[ 1]; __o[ 2] = Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
-                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
-                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
-                                    __o[15] = Ama ^ __oA[15]; __o[16] = Ame ^ __oA[16]; __o[17] = Ami ^ __oA[17]; __o[18] = Amo ^ __oA[18]; __o[19] = Amu ^ __oA[19]
+#define mStateExtr160( __o, __oA )  XKCP_store64(__o+0*8, Aba ^ XKCP_load64(__oA+0*8)); XKCP_store64(__o+1*8, Abe ^ XKCP_load64(__oA+1*8)); XKCP_store64(__o+2*8, Abi ^ XKCP_load64(__oA+2*8)); XKCP_store64(__o+3*8, Abo ^ XKCP_load64(__oA+3*8)); XKCP_store64(__o+4*8, Abu ^ XKCP_load64(__oA+4*8)); \
+                                    XKCP_store64(__o+5*8, Aga ^ XKCP_load64(__oA+5*8)); XKCP_store64(__o+6*8, Age ^ XKCP_load64(__oA+6*8)); XKCP_store64(__o+7*8, Agi ^ XKCP_load64(__oA+7*8)); XKCP_store64(__o+8*8, Ago ^ XKCP_load64(__oA+8*8)); XKCP_store64(__o+9*8, Agu ^ XKCP_load64(__oA+9*8)); \
+                                    XKCP_store64(__o+10*8, Aka ^ XKCP_load64(__oA+10*8)); XKCP_store64(__o+11*8, Ake ^ XKCP_load64(__oA+11*8)); XKCP_store64(__o+12*8, Aki ^ XKCP_load64(__oA+12*8)); XKCP_store64(__o+13*8, Ako ^ XKCP_load64(__oA+13*8)); XKCP_store64(__o+14*8, Aku ^ XKCP_load64(__oA+14*8)); \
+                                    XKCP_store64(__o+15*8, Ama ^ XKCP_load64(__oA+15*8)); XKCP_store64(__o+16*8, Ame ^ XKCP_load64(__oA+16*8)); XKCP_store64(__o+17*8, Ami ^ XKCP_load64(__oA+17*8)); XKCP_store64(__o+18*8, Amo ^ XKCP_load64(__oA+18*8)); XKCP_store64(__o+19*8, Amu ^ XKCP_load64(__oA+19*8))
 #endif
 
 // r = 128
@@ -622,15 +602,15 @@ trailer) are representation-agnostic, but data overwriting a lane
 #define mStateOut128( __s )         mStateOut160( __s ); __s[16] = Ame; __s[17] = Ami; __s[18] = Amo; __s[19] = Amu
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
-#define mStateOver128( __i )        Aba = __i[ 0]; Abe = ~__i[ 1]; Abi = ~__i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
-                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = ~__i[ 8]; Agu = __i[ 9]; \
-                                    Aka = __i[10]; Ake = __i[11]; Aki = ~__i[12]; Ako = __i[13]; Aku = __i[14]; \
-                                    Ama = __i[15]
+#define mStateOver128( __i )        Aba = XKCP_load64(__i+0*8); Abe = ~XKCP_load64(__i+1*8); Abi = ~XKCP_load64(__i+2*8); Abo = XKCP_load64(__i+3*8); Abu = XKCP_load64(__i+4*8); \
+                                    Aga = XKCP_load64(__i+5*8); Age = XKCP_load64(__i+6*8); Agi = XKCP_load64(__i+7*8); Ago = ~XKCP_load64(__i+8*8); Agu = XKCP_load64(__i+9*8); \
+                                    Aka = XKCP_load64(__i+10*8); Ake = XKCP_load64(__i+11*8); Aki = ~XKCP_load64(__i+12*8); Ako = XKCP_load64(__i+13*8); Aku = XKCP_load64(__i+14*8); \
+                                    Ama = XKCP_load64(__i+15*8)
 #else
-#define mStateOver128( __i )        Aba = __i[ 0]; Abe = __i[ 1]; Abi = __i[ 2]; Abo = __i[ 3]; Abu = __i[ 4]; \
-                                    Aga = __i[ 5]; Age = __i[ 6]; Agi = __i[ 7]; Ago = __i[ 8]; Agu = __i[ 9]; \
-                                    Aka = __i[10]; Ake = __i[11]; Aki = __i[12]; Ako = __i[13]; Aku = __i[14]; \
-                                    Ama = __i[15]
+#define mStateOver128( __i )        Aba = XKCP_load64(__i+0*8); Abe = XKCP_load64(__i+1*8); Abi = XKCP_load64(__i+2*8); Abo = XKCP_load64(__i+3*8); Abu = XKCP_load64(__i+4*8); \
+                                    Aga = XKCP_load64(__i+5*8); Age = XKCP_load64(__i+6*8); Agi = XKCP_load64(__i+7*8); Ago = XKCP_load64(__i+8*8); Agu = XKCP_load64(__i+9*8); \
+                                    Aka = XKCP_load64(__i+10*8); Ake = XKCP_load64(__i+11*8); Aki = XKCP_load64(__i+12*8); Ako = XKCP_load64(__i+13*8); Aku = XKCP_load64(__i+14*8); \
+                                    Ama = XKCP_load64(__i+15*8)
 #endif
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
@@ -646,15 +626,15 @@ trailer) are representation-agnostic, but data overwriting a lane
 #endif
 
 #ifdef KeccakP1600_plain64_useLaneComplementing
-#define mStateExtr128( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = ~Abe ^ __oA[ 1]; __o[ 2] = ~Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
-                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = ~Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
-                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = ~Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
-                                    __o[15] = Ama ^ __oA[15]
+#define mStateExtr128( __o, __oA )  XKCP_store64(__o+0*8, Aba ^ XKCP_load64(__oA+0*8)); XKCP_store64(__o+1*8, ~Abe ^ XKCP_load64(__oA+1*8)); XKCP_store64(__o+2*8, ~Abi ^ XKCP_load64(__oA+2*8)); XKCP_store64(__o+3*8, Abo ^ XKCP_load64(__oA+3*8)); XKCP_store64(__o+4*8, Abu ^ XKCP_load64(__oA+4*8)); \
+                                    XKCP_store64(__o+5*8, Aga ^ XKCP_load64(__oA+5*8)); XKCP_store64(__o+6*8, Age ^ XKCP_load64(__oA+6*8)); XKCP_store64(__o+7*8, Agi ^ XKCP_load64(__oA+7*8)); XKCP_store64(__o+8*8, ~Ago ^ XKCP_load64(__oA+8*8)); XKCP_store64(__o+9*8, Agu ^ XKCP_load64(__oA+9*8)); \
+                                    XKCP_store64(__o+10*8, Aka ^ XKCP_load64(__oA+10*8)); XKCP_store64(__o+11*8, Ake ^ XKCP_load64(__oA+11*8)); XKCP_store64(__o+12*8, ~Aki ^ XKCP_load64(__oA+12*8)); XKCP_store64(__o+13*8, Ako ^ XKCP_load64(__oA+13*8)); XKCP_store64(__o+14*8, Aku ^ XKCP_load64(__oA+14*8)); \
+                                    XKCP_store64(__o+15*8, Ama ^ XKCP_load64(__oA+15*8))
 #else
-#define mStateExtr128( __o, __oA )  __o[ 0] = Aba ^ __oA[ 0]; __o[ 1] = Abe ^ __oA[ 1]; __o[ 2] = Abi ^ __oA[ 2]; __o[ 3] = Abo ^ __oA[ 3]; __o[ 4] = Abu ^ __oA[ 4]; \
-                                    __o[ 5] = Aga ^ __oA[ 5]; __o[ 6] = Age ^ __oA[ 6]; __o[ 7] = Agi ^ __oA[ 7]; __o[ 8] = Ago ^ __oA[ 8]; __o[ 9] = Agu ^ __oA[ 9]; \
-                                    __o[10] = Aka ^ __oA[10]; __o[11] = Ake ^ __oA[11]; __o[12] = Aki ^ __oA[12]; __o[13] = Ako ^ __oA[13]; __o[14] = Aku ^ __oA[14]; \
-                                    __o[15] = Ama ^ __oA[15]
+#define mStateExtr128( __o, __oA )  XKCP_store64(__o+0*8, Aba ^ XKCP_load64(__oA+0*8)); XKCP_store64(__o+1*8, Abe ^ XKCP_load64(__oA+1*8)); XKCP_store64(__o+2*8, Abi ^ XKCP_load64(__oA+2*8)); XKCP_store64(__o+3*8, Abo ^ XKCP_load64(__oA+3*8)); XKCP_store64(__o+4*8, Abu ^ XKCP_load64(__oA+4*8)); \
+                                    XKCP_store64(__o+5*8, Aga ^ XKCP_load64(__oA+5*8)); XKCP_store64(__o+6*8, Age ^ XKCP_load64(__oA+6*8)); XKCP_store64(__o+7*8, Agi ^ XKCP_load64(__oA+7*8)); XKCP_store64(__o+8*8, Ago ^ XKCP_load64(__oA+8*8)); XKCP_store64(__o+9*8, Agu ^ XKCP_load64(__oA+9*8)); \
+                                    XKCP_store64(__o+10*8, Aka ^ XKCP_load64(__oA+10*8)); XKCP_store64(__o+11*8, Ake ^ XKCP_load64(__oA+11*8)); XKCP_store64(__o+12*8, Aki ^ XKCP_load64(__oA+12*8)); XKCP_store64(__o+13*8, Ako ^ XKCP_load64(__oA+13*8)); XKCP_store64(__o+14*8, Aku ^ XKCP_load64(__oA+14*8)); \
+                                    XKCP_store64(__o+15*8, Ama ^ XKCP_load64(__oA+15*8))
 #endif
 
 // Whole state
@@ -668,10 +648,10 @@ trailer) are representation-agnostic, but data overwriting a lane
 
 #define ODDuplexingFastInOut(RHO, trailerLane, rounds) \
     size_t originalDataByteLen = len; \
-    uint64_t        *stateAsLanes       = (uint64_t*)state; \
-    const uint64_t  *inDataAsLanes      = (const uint64_t*)idata; \
-    uint64_t        *outDataAsLanes     = (uint64_t*)odata; \
-    const uint64_t  *outDataAddAsLanes  = (const uint64_t*)odataAdd; \
+    uint64_t        *stateAsLanes       = state->A; \
+    const unsigned char *inDataAsLanes  = idata; \
+    unsigned char   *outDataAsLanes     = odata; \
+    const unsigned char *outDataAddAsLanes = odataAdd; \
     \
     mStateIn##RHO( stateAsLanes ); \
     while ( len >= RHO ) { \
@@ -679,9 +659,9 @@ trailer) are representation-agnostic, but data overwriting a lane
         trailerLane ^= trailencAsLane; \
         rounds \
         mStateExtr##RHO( outDataAsLanes, outDataAddAsLanes ); \
-        inDataAsLanes       += RHO / 8; \
-        outDataAsLanes      += RHO / 8; \
-        outDataAddAsLanes   += RHO / 8; \
+        inDataAsLanes       += RHO; \
+        outDataAsLanes      += RHO; \
+        outDataAddAsLanes   += RHO; \
         len                 -= RHO; \
     } \
     mStateOut##RHO( stateAsLanes ); \
@@ -728,9 +708,9 @@ size_t KeccakP1600_12rounds_plain64_ODDuplexingFastInOut(KeccakP1600_plain64_sta
 
 #define ODDuplexingFastOut(RHO, trailerLane, rounds) \
     size_t originalDataByteLen = len; \
-    uint64_t        *stateAsLanes       = (uint64_t*)state; \
-    uint64_t        *outDataAsLanes     = (uint64_t*)odata; \
-    const uint64_t  *outDataAddAsLanes  = (const uint64_t*)odataAdd; \
+    uint64_t        *stateAsLanes       = state->A; \
+    unsigned char   *outDataAsLanes     = odata; \
+    const unsigned char *outDataAddAsLanes = odataAdd; \
     \
     mStateIn##RHO( stateAsLanes ); \
     while ( len >= RHO ) { \
@@ -738,8 +718,8 @@ size_t KeccakP1600_12rounds_plain64_ODDuplexingFastInOut(KeccakP1600_plain64_sta
         trailerLane ^= trailencAsLane; \
         rounds \
         mStateExtr##RHO( outDataAsLanes, outDataAddAsLanes ); \
-        outDataAsLanes      += RHO / 8; \
-        outDataAddAsLanes   += RHO / 8; \
+        outDataAsLanes      += RHO; \
+        outDataAddAsLanes   += RHO; \
         len                 -= RHO; \
     } \
     mStateOut##RHO( stateAsLanes ); \
@@ -786,15 +766,15 @@ size_t KeccakP1600_12rounds_plain64_ODDuplexingFastOut(KeccakP1600_plain64_state
 
 #define ODDuplexingFastIn(RHO, trailerLane, rounds) \
     size_t originalDataByteLen = len; \
-    uint64_t        *stateAsLanes       = (uint64_t*)state; \
-    const uint64_t  *inDataAsLanes      = (const uint64_t*)idata; \
+    uint64_t        *stateAsLanes       = state->A; \
+    const unsigned char *inDataAsLanes  = idata; \
     \
     mStateIn##RHO( stateAsLanes ); \
     while ( len > RHO ) { \
         mStateOver##RHO( inDataAsLanes ); \
         trailerLane ^= trailencAsLane; \
         rounds \
-        inDataAsLanes   += RHO / 8; \
+        inDataAsLanes   += RHO; \
         len             -= RHO; \
     } \
     mStateOutAll( stateAsLanes ); \

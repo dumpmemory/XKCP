@@ -20,6 +20,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <string.h>
 #include <stdlib.h>
 #include "brg_endian.h"
+#include "load-store.h"
 #include "Kravatte.h"
 
 #ifdef XKCP_has_KeccakP1600times2
@@ -122,7 +123,7 @@ static void DUMP64( const unsigned char * pText, const unsigned char * pData, un
         KeccakP1600times##Parallellism##_StaticInitialize(); \
         mInitializePl(states, Parallellism); \
         do { \
-            Kravatte_Rollc( (uint64_t*)k, encbuf, Parallellism ); \
+            Kravatte_Rollc( k, encbuf, Parallellism ); \
             KeccakP1600times##Parallellism##_OverwriteLanesAll(&states, k, Kravatte_RollcOffset/8, 0); \
             i = 0; \
             do { \
@@ -149,7 +150,7 @@ static void DUMP64( const unsigned char * pText, const unsigned char * pData, un
         KeccakP1600times##Parallellism##_StaticInitialize(); \
         mInitializePl(states, Parallellism); \
         do { \
-            Kravatte_Rolle( (uint64_t*)kv->yAccu, encbuf, Parallellism ); \
+            Kravatte_Rolle( kv->yAccu, encbuf, Parallellism ); \
             KeccakP1600times##Parallellism##_OverwriteLanesAll(&states, kv->yAccu, Kravatte_RolleOffset/8, 0); \
             i = 0; \
             do { \
@@ -166,26 +167,27 @@ static void DUMP64( const unsigned char * pText, const unsigned char * pData, un
         } while ( outputByteLen >= Parallellism * SnP_widthInBytes ); \
     }
 
-static void Kravatte_Rollc( uint64_t *x, unsigned char *encbuf, unsigned int parallellism )
+static void Kravatte_Rollc( unsigned char *xbuf, unsigned char *encbuf, unsigned int parallellism )
 {
-    uint64_t    x0 = x[20];
-    uint64_t    x1 = x[21];
-    uint64_t    x2 = x[22];
-    uint64_t    x3 = x[23];
-    uint64_t    x4 = x[24];
+    uint64_t    x0 = XKCP_load64(xbuf+20*8);
+    uint64_t    x1 = XKCP_load64(xbuf+21*8);
+    uint64_t    x2 = XKCP_load64(xbuf+22*8);
+    uint64_t    x3 = XKCP_load64(xbuf+23*8);
+    uint64_t    x4 = XKCP_load64(xbuf+24*8);
     uint64_t    t;
     #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    uint64_t    *pEnc = (uint64_t*)encbuf;
+    unsigned char *pEnc = encbuf;
     #endif
 
     do {
         #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-        *(pEnc++) = x0;
-        *(pEnc++) = x1;
-        *(pEnc++) = x2;
-        *(pEnc++) = x3;
-        *(pEnc++) = x4;
-        DUMP("Rollc", pEnc - Kravatte_RollcSizeInBytes/8, Kravatte_RollcSizeInBytes);
+        XKCP_store64(pEnc+0*8, x0);
+        XKCP_store64(pEnc+1*8, x1);
+        XKCP_store64(pEnc+2*8, x2);
+        XKCP_store64(pEnc+3*8, x3);
+        XKCP_store64(pEnc+4*8, x4);
+        pEnc += 5*8;
+        DUMP("Rollc", pEnc - Kravatte_RollcSizeInBytes, Kravatte_RollcSizeInBytes);
         #else
         #error todo
         #endif
@@ -198,45 +200,46 @@ static void Kravatte_Rollc( uint64_t *x, unsigned char *encbuf, unsigned int par
         x4 = ROL64(t, 7) ^ x0 ^ (x0 >> 3);
     } while(--parallellism != 0); 
 
-    x[20] = x0;
-    x[21] = x1;
-    x[22] = x2;
-    x[23] = x3;
-    x[24] = x4;
-    DUMP("Rollc state", pEnc - Kravatte_RollcSizeInBytes/8, Kravatte_RollcSizeInBytes);
+    XKCP_store64(xbuf+20*8, x0);
+    XKCP_store64(xbuf+21*8, x1);
+    XKCP_store64(xbuf+22*8, x2);
+    XKCP_store64(xbuf+23*8, x3);
+    XKCP_store64(xbuf+24*8, x4);
+    DUMP("Rollc state", pEnc - Kravatte_RollcSizeInBytes, Kravatte_RollcSizeInBytes);
 
 }
 
-static void Kravatte_Rolle( uint64_t *x, unsigned char *encbuf, unsigned int parallellism )
+static void Kravatte_Rolle( unsigned char *xbuf, unsigned char *encbuf, unsigned int parallellism )
 {
-    uint64_t    x0 = x[15];
-    uint64_t    x1 = x[16];
-    uint64_t    x2 = x[17];
-    uint64_t    x3 = x[18];
-    uint64_t    x4 = x[19];
-    uint64_t    x5 = x[20];
-    uint64_t    x6 = x[21];
-    uint64_t    x7 = x[22];
-    uint64_t    x8 = x[23];
-    uint64_t    x9 = x[24];
+    uint64_t    x0 = XKCP_load64(xbuf+15*8);
+    uint64_t    x1 = XKCP_load64(xbuf+16*8);
+    uint64_t    x2 = XKCP_load64(xbuf+17*8);
+    uint64_t    x3 = XKCP_load64(xbuf+18*8);
+    uint64_t    x4 = XKCP_load64(xbuf+19*8);
+    uint64_t    x5 = XKCP_load64(xbuf+20*8);
+    uint64_t    x6 = XKCP_load64(xbuf+21*8);
+    uint64_t    x7 = XKCP_load64(xbuf+22*8);
+    uint64_t    x8 = XKCP_load64(xbuf+23*8);
+    uint64_t    x9 = XKCP_load64(xbuf+24*8);
     uint64_t    t;
     #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    uint64_t    *pEnc = (uint64_t*)encbuf;
+    unsigned char *pEnc = encbuf;
     #endif
 
     do {
         #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-        *(pEnc++) = x0;
-        *(pEnc++) = x1;
-        *(pEnc++) = x2;
-        *(pEnc++) = x3;
-        *(pEnc++) = x4;
-        *(pEnc++) = x5;
-        *(pEnc++) = x6;
-        *(pEnc++) = x7;
-        *(pEnc++) = x8;
-        *(pEnc++) = x9;
-        DUMP("Rolle", pEnc - Kravatte_RolleSizeInBytes/8, Kravatte_RolleSizeInBytes);
+        XKCP_store64(pEnc+0*8, x0);
+        XKCP_store64(pEnc+1*8, x1);
+        XKCP_store64(pEnc+2*8, x2);
+        XKCP_store64(pEnc+3*8, x3);
+        XKCP_store64(pEnc+4*8, x4);
+        XKCP_store64(pEnc+5*8, x5);
+        XKCP_store64(pEnc+6*8, x6);
+        XKCP_store64(pEnc+7*8, x7);
+        XKCP_store64(pEnc+8*8, x8);
+        XKCP_store64(pEnc+9*8, x9);
+        pEnc += 10*8;
+        DUMP("Rolle", pEnc - Kravatte_RolleSizeInBytes, Kravatte_RolleSizeInBytes);
         #else
         #error todo
         #endif
@@ -254,16 +257,16 @@ static void Kravatte_Rolle( uint64_t *x, unsigned char *encbuf, unsigned int par
         x9 = ROL64(t, 7) ^ ROL64(x0, 18) ^ (x1 & (x0 >> 1));
     } while(--parallellism != 0); 
 
-    x[15] = x0;
-    x[16] = x1;
-    x[17] = x2;
-    x[18] = x3;
-    x[19] = x4;
-    x[20] = x5;
-    x[21] = x6;
-    x[22] = x7;
-    x[23] = x8;
-    x[24] = x9;
+    XKCP_store64(xbuf+15*8, x0);
+    XKCP_store64(xbuf+16*8, x1);
+    XKCP_store64(xbuf+17*8, x2);
+    XKCP_store64(xbuf+18*8, x3);
+    XKCP_store64(xbuf+19*8, x4);
+    XKCP_store64(xbuf+20*8, x5);
+    XKCP_store64(xbuf+21*8, x6);
+    XKCP_store64(xbuf+22*8, x7);
+    XKCP_store64(xbuf+23*8, x8);
+    XKCP_store64(xbuf+24*8, x9);
     DUMP("Rolle state", pEnc - Kravatte_RolleSizeInBytes/8, Kravatte_RolleSizeInBytes);
 
 }
@@ -305,7 +308,7 @@ static const unsigned char * Kra_Compress( unsigned char *k, unsigned char *x, c
         mInitialize(&state);
         do {
             KeccakP1600_OverwriteBytes(&state, k, 0, SnP_widthInBytes);
-            Kravatte_Rollc((uint64_t*)k, encbuf, 1);
+            Kravatte_Rollc( k, encbuf, 1);
             KeccakP1600_AddBytes(&state, message, 0, SnP_widthInBytes);
             DUMP("msg p1", message, SnP_widthInBytes);
             KeccakP1600_Permute_Nrounds(&state, 6);
@@ -325,7 +328,7 @@ static const unsigned char * Kra_Compress( unsigned char *k, unsigned char *x, c
         KeccakP1600_StaticInitialize();
         mInitialize(&state);
         KeccakP1600_OverwriteBytes(&state, k, 0, SnP_widthInBytes); /* write k */
-        Kravatte_Rollc((uint64_t*)k, encbuf, 1);
+        Kravatte_Rollc( k, encbuf, 1);
         KeccakP1600_AddBytes(&state, message, 0, (unsigned int)messageByteLen); /* add message */
         DUMP("msg pL", state, SnP_widthInBytes);
         message += messageByteLen;
@@ -337,7 +340,7 @@ static const unsigned char * Kra_Compress( unsigned char *k, unsigned char *x, c
         KeccakP1600_Permute_Nrounds(&state, 6);
         KeccakP1600_ExtractAndAddBytes(&state, x, x, 0, SnP_widthInBytes);
         DUMP("xAc pL", x, SnP_widthInBytes);
-        Kravatte_Rollc((uint64_t*)k, encbuf, 1);
+        Kravatte_Rollc( k, encbuf, 1);
         *messageBitLen = 0;
     }
     return message;
@@ -504,7 +507,7 @@ int Vatte(Kravatte_Instance *kv, BitSequence *output, BitLength outputBitLen, in
         do {
             len = (unsigned int)MyMin(outputByteLen, SnP_widthInBytes);
             KeccakP1600_OverwriteBytes(&state, kv->yAccu, 0, SnP_widthInBytes);
-            Kravatte_Rolle((uint64_t*)kv->yAccu, encbuf, 1);
+            Kravatte_Rolle( kv->yAccu, encbuf, 1);
             KeccakP1600_Permute_Nrounds(&state, 6);
             KeccakP1600_ExtractAndAddBytes(&state, kv->kRoll, output, 0, len);
             DUMP("out 1", output, len);

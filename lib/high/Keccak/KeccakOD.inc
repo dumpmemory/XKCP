@@ -15,6 +15,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 */
 
 #include "align.h"
+#include "load-store.h"
 
 #define JOIN0(a, b)                     a ## b
 #define JOIN(a, b)                      JOIN0(a, b)
@@ -73,7 +74,7 @@ size_t OD_DuplexingFast( KeccakWidth1600_ODInstance *od, const uint8_t *idata, s
     od->o = r;
 
     if (SnP_GetFeatures() & SnP_Feature_OD)
-        return SnP_ODDuplexingFastInOut(&od->s, r/8, idata, len, odata, odataAdd, *(const uint64_t*)trailenc);
+        return SnP_ODDuplexingFastInOut(&od->s, r/8, idata, len, odata, odataAdd, XKCP_load64(trailenc));
 
     size_t  initialLen = len;
     do {
@@ -104,7 +105,7 @@ size_t OD_DuplexingFastOnlyOut( KeccakWidth1600_ODInstance *od, unsigned int E, 
     od->o = r;
 
     if (SnP_GetFeatures() & SnP_Feature_OD)
-        return SnP_ODDuplexingFastOut( &od->s, r/8, odata, len, odataAdd, *(const uint64_t*)trailenc );
+        return SnP_ODDuplexingFastOut( &od->s, r/8, odata, len, odataAdd, XKCP_load64(trailenc) );
 
     size_t  initialLen = len;
     do {
@@ -134,7 +135,7 @@ size_t OD_DuplexingFastOnlyIn( KeccakWidth1600_ODInstance *od, const uint8_t *id
     od->o = 0;
 
     if (SnP_GetFeatures() & SnP_Feature_OD)
-        return SnP_ODDuplexingFastIn( &od->s, r/8, idata, len, *(const uint64_t*)trailenc );
+        return SnP_ODDuplexingFastIn( &od->s, r/8, idata, len, XKCP_load64(trailenc) );
 
     size_t initialLen = len;
     do {
