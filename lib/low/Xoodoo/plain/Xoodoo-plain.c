@@ -62,19 +62,18 @@ void Xoodoo_plain_AddBytes(Xoodoo_plain32_state *argState, const unsigned char *
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     if (length == (3*4*4)) {
         uint32_t *state = argState->A;
-        uint32_t *data = (uint32_t *)argdata;
-        state[0] ^= data[0];
-        state[1] ^= data[1];
-        state[2] ^= data[2];
-        state[3] ^= data[3];
-        state[4] ^= data[4];
-        state[5] ^= data[5];
-        state[6] ^= data[6];
-        state[7] ^= data[7];
-        state[8] ^= data[8];
-        state[9] ^= data[9];
-        state[10] ^= data[10];
-        state[11] ^= data[11];
+        state[0] ^= XKCP_load32(argdata+0*4);
+        state[1] ^= XKCP_load32(argdata+1*4);
+        state[2] ^= XKCP_load32(argdata+2*4);
+        state[3] ^= XKCP_load32(argdata+3*4);
+        state[4] ^= XKCP_load32(argdata+4*4);
+        state[5] ^= XKCP_load32(argdata+5*4);
+        state[6] ^= XKCP_load32(argdata+6*4);
+        state[7] ^= XKCP_load32(argdata+7*4);
+        state[8] ^= XKCP_load32(argdata+8*4);
+        state[9] ^= XKCP_load32(argdata+9*4);
+        state[10] ^= XKCP_load32(argdata+10*4);
+        state[11] ^= XKCP_load32(argdata+11*4);
     }
     else {
         unsigned int sizeLeft = length;
@@ -119,19 +118,18 @@ void Xoodoo_plain_OverwriteBytes(Xoodoo_plain32_state *argstate, const unsigned 
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     if (length == (3*4*4)) {
         uint32_t *state = argstate->A;
-        uint32_t *data = (uint32_t *)argdata;
-        state[0] = data[0];
-        state[1] = data[1];
-        state[2] = data[2];
-        state[3] = data[3];
-        state[4] = data[4];
-        state[5] = data[5];
-        state[6] = data[6];
-        state[7] = data[7];
-        state[8] = data[8];
-        state[9] = data[9];
-        state[10] = data[10];
-        state[11] = data[11];
+        state[0] = XKCP_load32(argdata+0*4);
+        state[1] = XKCP_load32(argdata+1*4);
+        state[2] = XKCP_load32(argdata+2*4);
+        state[3] = XKCP_load32(argdata+3*4);
+        state[4] = XKCP_load32(argdata+4*4);
+        state[5] = XKCP_load32(argdata+5*4);
+        state[6] = XKCP_load32(argdata+6*4);
+        state[7] = XKCP_load32(argdata+7*4);
+        state[8] = XKCP_load32(argdata+8*4);
+        state[9] = XKCP_load32(argdata+9*4);
+        state[10] = XKCP_load32(argdata+10*4);
+        state[11] = XKCP_load32(argdata+11*4);
     }
     else
         memcpy((unsigned char*)argstate+offset, argdata, length);
@@ -169,21 +167,19 @@ void Xoodoo_plain_ExtractAndAddBytes(const Xoodoo_plain32_state *argState, const
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     if (length == (3*4*4)) {
         const uint32_t *state = argState->A;
-        const uint32_t *ii = (const uint32_t *)input;
-        uint32_t *oo = (uint32_t *)output;
 
-        oo[0] = state[0] ^ ii[0];
-        oo[1] = state[1] ^ ii[1];
-        oo[2] = state[2] ^ ii[2];
-        oo[3] = state[3] ^ ii[3];
-        oo[4] = state[4] ^ ii[4];
-        oo[5] = state[5] ^ ii[5];
-        oo[6] = state[6] ^ ii[6];
-        oo[7] = state[7] ^ ii[7];
-        oo[8] = state[8] ^ ii[8];
-        oo[9] = state[9] ^ ii[9];
-        oo[10] = state[10] ^ ii[10];
-        oo[11] = state[11] ^ ii[11];
+        XKCP_store32(output+0*4, state[0] ^ XKCP_load32(input+0*4));
+        XKCP_store32(output+1*4, state[1] ^ XKCP_load32(input+1*4));
+        XKCP_store32(output+2*4, state[2] ^ XKCP_load32(input+2*4));
+        XKCP_store32(output+3*4, state[3] ^ XKCP_load32(input+3*4));
+        XKCP_store32(output+4*4, state[4] ^ XKCP_load32(input+4*4));
+        XKCP_store32(output+5*4, state[5] ^ XKCP_load32(input+5*4));
+        XKCP_store32(output+6*4, state[6] ^ XKCP_load32(input+6*4));
+        XKCP_store32(output+7*4, state[7] ^ XKCP_load32(input+7*4));
+        XKCP_store32(output+8*4, state[8] ^ XKCP_load32(input+8*4));
+        XKCP_store32(output+9*4, state[9] ^ XKCP_load32(input+9*4));
+        XKCP_store32(output+10*4, state[10] ^ XKCP_load32(input+10*4));
+        XKCP_store32(output+11*4, state[11] ^ XKCP_load32(input+11*4));
     }
     else {
         unsigned int sizeLeft = length;

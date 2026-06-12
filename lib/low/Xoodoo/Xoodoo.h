@@ -18,6 +18,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #define _Xoodoo_h_
 
 #include <stdint.h>
+#include "load-store.h"
 #include <stdlib.h>
 
 #define MAXROUNDS   12
@@ -51,23 +52,11 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #endif
 
 #if !defined(READ32_UNALIGNED)
-    #if defined (__arm__) && !defined(__GNUC__)
-        #define READ32_UNALIGNED(argAddress)            (*((const __packed uint32_t*)(argAddress)))
-    #elif defined(_MSC_VER)
-        #define READ32_UNALIGNED(argAddress)            (*((const uint32_t*)(argAddress)))
-    #else
-        #define READ32_UNALIGNED(argAddress)            (*((const uint32_t*)(argAddress)))
-    #endif
+    #define READ32_UNALIGNED(argAddress)            XKCP_load32(argAddress)
 #endif
 
 #if !defined(WRITE32_UNALIGNED)
-    #if defined (__arm__) && !defined(__GNUC__)
-        #define WRITE32_UNALIGNED(argAddress, argData)  (*((__packed uint32_t*)(argAddress)) = (argData))
-    #elif defined(_MSC_VER)
-        #define WRITE32_UNALIGNED(argAddress, argData)  (*((uint32_t*)(argAddress)) = (argData))
-    #else
-        #define WRITE32_UNALIGNED(argAddress, argData)  (*((uint32_t*)(argAddress)) = (argData))
-    #endif
+    #define WRITE32_UNALIGNED(argAddress, argData)  XKCP_store32((argAddress), (argData))
 #endif
 
 #if !defined(index)

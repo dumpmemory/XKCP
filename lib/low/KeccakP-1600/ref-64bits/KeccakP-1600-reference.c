@@ -195,10 +195,8 @@ void KeccakP1600_OverwriteWithZeroes(KeccakP1600_plain8_state *state, unsigned i
 
 /* ---------------------------------------------------------------- */
 
-#if (PLATFORM_BYTE_ORDER != IS_LITTLE_ENDIAN)
 static void fromBytesToWords(tKeccakLane *stateAsWords, const unsigned char *state);
 static void fromWordsToBytes(unsigned char *state, const tKeccakLane *stateAsWords);
-#endif
 void KeccakP1600OnWords(tKeccakLane *state, unsigned int nrRounds);
 void KeccakP1600Round(tKeccakLane *state, unsigned int indexRound);
 static void theta(tKeccakLane *A);
@@ -209,20 +207,14 @@ static void iota(tKeccakLane *A, unsigned int indexRound);
 
 void KeccakP1600_Permute_Nrounds(KeccakP1600_plain8_state *state, unsigned int nrounds)
 {
-#if (PLATFORM_BYTE_ORDER != IS_LITTLE_ENDIAN)
     tKeccakLane stateAsWords[1600/64];
-#endif
 
 #ifdef KeccakReference
     displayStateAsBytes(1, "Input of permutation", (const unsigned char *)state->A, 1600);
 #endif
-#if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    KeccakP1600OnWords((tKeccakLane*)state->A, nrounds);
-#else
     fromBytesToWords(stateAsWords, state->A);
     KeccakP1600OnWords(stateAsWords, nrounds);
     fromWordsToBytes(state->A, stateAsWords);
-#endif
 #ifdef KeccakReference
     displayStateAsBytes(1, "State after permutation", (const unsigned char *)state->A, 1600);
 #endif
@@ -238,7 +230,6 @@ void KeccakP1600_Permute_24rounds(KeccakP1600_plain8_state *state)
     KeccakP1600_Permute_Nrounds(state, 24);
 }
 
-#if (PLATFORM_BYTE_ORDER != IS_LITTLE_ENDIAN)
 static void fromBytesToWords(tKeccakLane *stateAsWords, const uint8_t *state)
 {
     unsigned int i, j;
@@ -258,7 +249,6 @@ static void fromWordsToBytes(uint8_t *state, const tKeccakLane *stateAsWords)
         for(j=0; j<(64/8); j++)
             state[i*(64/8)+j] = (uint8_t)((stateAsWords[i] >> (8*j)) & 0xFF);
 }
-#endif
 
 void KeccakP1600OnWords(tKeccakLane *state, unsigned int nrRounds)
 {

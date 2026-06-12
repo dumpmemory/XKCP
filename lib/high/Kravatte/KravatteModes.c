@@ -16,6 +16,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 #include <string.h>
 #include "brg_endian.h"
+#include "load-store.h"
 #include "Kravatte.h"
 #include "KravatteModes.h"
 
@@ -53,23 +54,21 @@ static void memxoris(BitSequence *target, const BitSequence *source, BitLength b
 {
     size_t  byteLen = bitLen / 8;
 
-    #if !defined(NO_MISALIGNED_ACCESSES)
     while ( byteLen >= 32 ) {
-        *((uint64_t*)(target+0)) ^= *((uint64_t*)(source+0));
-        *((uint64_t*)(target+8)) ^= *((uint64_t*)(source+8));
-        *((uint64_t*)(target+16)) ^= *((uint64_t*)(source+16));
-        *((uint64_t*)(target+24)) ^= *((uint64_t*)(source+24));
+        XKCP_store64(target+0, XKCP_load64(target+0) ^ XKCP_load64(source+0));
+        XKCP_store64(target+8, XKCP_load64(target+8) ^ XKCP_load64(source+8));
+        XKCP_store64(target+16, XKCP_load64(target+16) ^ XKCP_load64(source+16));
+        XKCP_store64(target+24, XKCP_load64(target+24) ^ XKCP_load64(source+24));
         source += 32;
         target += 32;
         byteLen -= 32;
     }
     while ( byteLen >= 8 ) {
-        *((uint64_t*)target) ^= *((uint64_t*)source);
+        XKCP_store64(target, XKCP_load64(target) ^ XKCP_load64(source));
         source += 8;
         target += 8;
         byteLen -= 8;
     }
-    #endif
 
     while ( byteLen-- != 0 )
     {

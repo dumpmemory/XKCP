@@ -21,6 +21,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <stdio.h>
 #include <stdlib.h>
 #include "brg_endian.h"
+#include "load-store.h"
 #include "Xoofff.h"
 #include "Xoodoo.h"
 #ifdef XKCP_has_Xoodootimes16
@@ -140,7 +141,7 @@ static void DumpBuf( const unsigned char * pText, const unsigned char * pData, u
         Xoodootimes##Parallellism##_StaticInitialize(); \
         mInitializePl(states, Parallellism); \
         do { \
-            Xoofff_Rollc( (uint32_t*)k, encbuf, Parallellism ); \
+            Xoofff_Rollc( k, encbuf, Parallellism ); \
             i = 0; \
             do { \
                 Xoodootimes##Parallellism##_OverwriteBytes(&states, i, encbuf + i * Xoofff_RollSizeInBytes, Xoofff_RollOffset, Xoofff_RollSizeInBytes); \
@@ -166,7 +167,7 @@ static void DumpBuf( const unsigned char * pText, const unsigned char * pData, u
         Xoodootimes##Parallellism##_StaticInitialize(); \
         mInitializePl(states, Parallellism); \
         do { \
-            Xoofff_Rolle( (uint32_t*)xp->yAccu, encbuf, Parallellism ); \
+            Xoofff_Rolle( xp->yAccu, encbuf, Parallellism ); \
             i = 0; \
             do { \
                 Xoodootimes##Parallellism##_OverwriteBytes(&states, i, encbuf + i * Xoofff_RollSizeInBytes, Xoofff_RollOffset, Xoofff_RollSizeInBytes); \
@@ -182,28 +183,32 @@ static void DumpBuf( const unsigned char * pText, const unsigned char * pData, u
         } while ( outputByteLen >= Parallellism * SnP_widthInBytes ); \
     }
 
-static void Xoofff_Rollc( uint32_t *a, unsigned char *encbuf, unsigned int parallellism )
+static void Xoofff_Rollc( unsigned char *abuf, unsigned char *encbuf, unsigned int parallellism )
 {
+    uint32_t    a[3*NCOLUMS];
     uint32_t    b[NCOLUMS];
+
+    memcpy(a, abuf, sizeof(a));
     #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    uint32_t    *pEnc = (uint32_t*)encbuf;
+    unsigned char *pEnc = encbuf;
     #endif
 
     do {
         #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-        *(pEnc++) = a[0];
-        *(pEnc++) = a[1];
-        *(pEnc++) = a[2];
-        *(pEnc++) = a[3];
-        *(pEnc++) = a[4];
-        *(pEnc++) = a[5];
-        *(pEnc++) = a[6];
-        *(pEnc++) = a[7];
-        *(pEnc++) = a[8];
-        *(pEnc++) = a[9];
-        *(pEnc++) = a[10];
-        *(pEnc++) = a[11];
-        DUMP("Roll-c", pEnc - Xoofff_RollSizeInBytes/4, Xoofff_RollSizeInBytes);
+        XKCP_store32(pEnc+0*4, a[0]);
+        XKCP_store32(pEnc+1*4, a[1]);
+        XKCP_store32(pEnc+2*4, a[2]);
+        XKCP_store32(pEnc+3*4, a[3]);
+        XKCP_store32(pEnc+4*4, a[4]);
+        XKCP_store32(pEnc+5*4, a[5]);
+        XKCP_store32(pEnc+6*4, a[6]);
+        XKCP_store32(pEnc+7*4, a[7]);
+        XKCP_store32(pEnc+8*4, a[8]);
+        XKCP_store32(pEnc+9*4, a[9]);
+        XKCP_store32(pEnc+10*4, a[10]);
+        XKCP_store32(pEnc+11*4, a[11]);
+        pEnc += 12*4;
+        DUMP("Roll-c", pEnc - Xoofff_RollSizeInBytes, Xoofff_RollSizeInBytes);
         #else
         #error todo
         #endif
@@ -229,31 +234,36 @@ static void Xoofff_Rollc( uint32_t *a, unsigned char *encbuf, unsigned int paral
         a[8+2] = b[2];
         a[8+3] = b[3];
     } while(--parallellism != 0);
+    memcpy(abuf, a, sizeof(a));
     DUMP("Roll-c next", a, Xoofff_RollSizeInBytes);
 }
 
-static void Xoofff_Rolle( uint32_t *a, unsigned char *encbuf, unsigned int parallellism )
+static void Xoofff_Rolle( unsigned char *abuf, unsigned char *encbuf, unsigned int parallellism )
 {
+    uint32_t    a[3*NCOLUMS];
     uint32_t    b[NCOLUMS];
+
+    memcpy(a, abuf, sizeof(a));
     #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    uint32_t    *pEnc = (uint32_t*)encbuf;
+    unsigned char *pEnc = encbuf;
     #endif
 
     do {
         #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-        *(pEnc++) = a[0];
-        *(pEnc++) = a[1];
-        *(pEnc++) = a[2];
-        *(pEnc++) = a[3];
-        *(pEnc++) = a[4];
-        *(pEnc++) = a[5];
-        *(pEnc++) = a[6];
-        *(pEnc++) = a[7];
-        *(pEnc++) = a[8];
-        *(pEnc++) = a[9];
-        *(pEnc++) = a[10];
-        *(pEnc++) = a[11];
-        DUMP("Roll-e", pEnc - Xoofff_RollSizeInBytes/4, Xoofff_RollSizeInBytes);
+        XKCP_store32(pEnc+0*4, a[0]);
+        XKCP_store32(pEnc+1*4, a[1]);
+        XKCP_store32(pEnc+2*4, a[2]);
+        XKCP_store32(pEnc+3*4, a[3]);
+        XKCP_store32(pEnc+4*4, a[4]);
+        XKCP_store32(pEnc+5*4, a[5]);
+        XKCP_store32(pEnc+6*4, a[6]);
+        XKCP_store32(pEnc+7*4, a[7]);
+        XKCP_store32(pEnc+8*4, a[8]);
+        XKCP_store32(pEnc+9*4, a[9]);
+        XKCP_store32(pEnc+10*4, a[10]);
+        XKCP_store32(pEnc+11*4, a[11]);
+        pEnc += 12*4;
+        DUMP("Roll-e", pEnc - Xoofff_RollSizeInBytes, Xoofff_RollSizeInBytes);
         #else
         #error todo
         #endif
@@ -279,6 +289,7 @@ static void Xoofff_Rolle( uint32_t *a, unsigned char *encbuf, unsigned int paral
         a[8+2] = b[2];
         a[8+3] = b[3];
     } while(--parallellism != 0);
+    memcpy(abuf, a, sizeof(a));
     DUMP("Roll-e next", a, Xoofff_RollSizeInBytes);
 }
 
@@ -289,23 +300,21 @@ void Xoofff_AddIs_dispatch(unsigned char *output, const unsigned char *input, si
     else {
         size_t  byteLen = bitLen / 8;
 
-        #if !defined(NO_MISALIGNED_ACCESSES)
         while ( byteLen >= 32 ) {
-            *((uint64_t*)(output+0)) ^= *((const uint64_t*)(input+0));
-            *((uint64_t*)(output+8)) ^= *((const uint64_t*)(input+8));
-            *((uint64_t*)(output+16)) ^= *((const uint64_t*)(input+16));
-            *((uint64_t*)(output+24)) ^= *((const uint64_t*)(input+24));
+            XKCP_store64(output+0, XKCP_load64(output+0) ^ XKCP_load64(input+0));
+            XKCP_store64(output+8, XKCP_load64(output+8) ^ XKCP_load64(input+8));
+            XKCP_store64(output+16, XKCP_load64(output+16) ^ XKCP_load64(input+16));
+            XKCP_store64(output+24, XKCP_load64(output+24) ^ XKCP_load64(input+24));
             input += 32;
             output += 32;
             byteLen -= 32;
         }
         while ( byteLen >= 8 ) {
-            *((uint64_t*)output) ^= *((const uint64_t*)input);
+            XKCP_store64(output, XKCP_load64(output) ^ XKCP_load64(input));
             input += 8;
             output += 8;
             byteLen -= 8;
         }
-        #endif
 
         while ( byteLen-- != 0 )
         {
@@ -337,7 +346,7 @@ size_t Xoofff_CompressFastLoop_dispatch(unsigned char *k, unsigned char *x, cons
         mInitialize(state);
         do {
             Xoodoo_OverwriteBytes(&state, k, 0, SnP_widthInBytes);
-            Xoofff_Rollc((uint32_t*)k, encbuf, 1);
+            Xoofff_Rollc( k, encbuf, 1);
             Xoodoo_AddBytes(&state, input, 0, SnP_widthInBytes);
             DUMP("msg p1", input, SnP_widthInBytes);
             Xoodoo_Permute_6rounds(&state);
@@ -368,7 +377,7 @@ size_t Xoofff_ExpandFastLoop_dispatch(unsigned char *yAccu, const unsigned char 
         mInitialize(state);
         do {
             Xoodoo_OverwriteBytes(&state, yAccu, 0, SnP_widthInBytes);
-            Xoofff_Rolle((uint32_t*)yAccu, encbuf, 1);
+            Xoofff_Rolle( yAccu, encbuf, 1);
             Xoodoo_Permute_6rounds(&state);
             Xoodoo_ExtractAndAddBytes(&state, kRoll, output, 0, SnP_widthInBytes);
             DUMP("out 1", output, SnP_widthInBytes);
@@ -433,7 +442,7 @@ static const unsigned char * Xoodoo_CompressBlocks( unsigned char *k, unsigned c
         Xoodoo_StaticInitialize();
         mInitialize(state);
         Xoodoo_OverwriteBytes(&state, k, 0, SnP_widthInBytes); /* write k */
-        Xoofff_Rollc((uint32_t*)k, encbuf, 1);
+        Xoofff_Rollc( k, encbuf, 1);
         Xoodoo_AddBytes(&state, message, 0, (unsigned int)messageByteLen); /* add message */
         DUMP("msg pL", &state, SnP_widthInBytes);
         message += messageByteLen;
@@ -445,7 +454,7 @@ static const unsigned char * Xoodoo_CompressBlocks( unsigned char *k, unsigned c
         Xoodoo_Permute_6rounds(&state);
         Xoodoo_ExtractAndAddBytes(&state, x, x, 0, SnP_widthInBytes);
         DUMP("xAc pL", x, SnP_widthInBytes);
-        Xoofff_Rollc((uint32_t*)k, encbuf, 1);
+        Xoofff_Rollc( k, encbuf, 1);
         *messageBitLen = 0;
     }
     return message;
@@ -626,7 +635,7 @@ int Xoofff_Expand(Xoofff_Instance *xp, BitSequence *output, BitLength outputBitL
         Xoodoo_StaticInitialize();
         mInitialize(state);
         Xoodoo_OverwriteBytes(&state, xp->yAccu, 0, SnP_widthInBytes);
-        Xoofff_Rolle((uint32_t*)xp->yAccu, encbuf, 1);
+        Xoofff_Rolle( xp->yAccu, encbuf, 1);
         Xoodoo_Permute_6rounds(&state);
         Xoodoo_ExtractAndAddBytes(&state, xp->kRoll, output, 0, (unsigned int)outputByteLen);
         DUMP("out 1", output, outputByteLen);

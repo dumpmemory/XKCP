@@ -26,6 +26,7 @@ Please refer to LowLevel.build for the exact list of other files it must be comb
 #include <string.h>
 #include <stdlib.h>
 #include "brg_endian.h"
+#include "load-store.h"
 #include "KeccakP-1600-SnP.h"
 #include "SnP-Relaned.h"
 
@@ -397,7 +398,7 @@ void KeccakP1600_ExtractAndAddLanes(const KeccakP1600_plain64_state *state, cons
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     tSmallUInt i;
     for(i=0; i<laneCount; i++)
-        ((tKeccakLane*)output)[i] = ((tKeccakLane*)input)[i] ^ ((const tKeccakLane*)state)[i];
+        XKCP_store64(output+i*8, XKCP_load64(input+i*8) ^ state->A[i]);
 #else
     tSmallUInt i, j;
     for(i=0; i<laneCount; i++)
